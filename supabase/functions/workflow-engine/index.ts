@@ -34,13 +34,6 @@ serve(async (req) => {
     return new Response(JSON.stringify({ triggered: 0 }), { status: 200 });
   }
 
-  // Get org details for API keys
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("*")
-    .eq("id", org_id)
-    .single();
-
   let triggered = 0;
 
   for (const workflow of workflows) {
@@ -81,81 +74,21 @@ serve(async (req) => {
 
     if (!shouldFire) continue;
 
-    // Execute actions
+    // Execute actions via centralized execute-action function
     for (const action of actions || []) {
       try {
-        switch (action.type) {
-          case "ghl_move_pipeline": {
-            if (org?.ghl_api_key && contact.ghl_contact_id) {
-              await fetch(`https://services.leadconnectorhq.com/opportunities/`, {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${org.ghl_api_key}`,
-                  "Content-Type": "application/json",
-                  "Version": "2021-07-28",
-                },
-                body: JSON.stringify({
-                  pipelineId: action.pipeline_id,
-                  stageId: action.stage_id,
-                  contactId: contact.ghl_contact_id,
-                  locationId: org.ghl_location_id,
-                  name: `${contact.first_name} ${contact.last_name}`,
-                }),
-              });
-            }
-            break;
-          }
-
-          case "ghl_add_tag": {
-            if (org?.ghl_api_key && contact.ghl_contact_id) {
-              await fetch(`https://services.leadconnectorhq.com/contacts/${contact.ghl_contact_id}/tags`, {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${org.ghl_api_key}`,
-                  "Content-Type": "application/json",
-                  "Version": "2021-07-28",
-                },
-                body: JSON.stringify({ tags: [action.tag] }),
-              });
-            }
-            break;
-          }
-
-          case "telnyx_sms": {
-            if (org?.telnyx_api_key && contact.phone) {
-              await fetch("https://api.telnyx.com/v2/messages", {
-                method: "POST",
-                headers: {
-                  "Authorization": `Bearer ${org.telnyx_api_key}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  from: org.telnyx_phone_number,
-                  to: contact.phone,
-                  text: action.message
-                    .replace("{{first_name}}", contact.first_name || "")
-                    .replace("{{last_name}}", contact.last_name || ""),
-                }),
-              });
-            }
-            break;
-          }
-
-          case "internal_alert": {
-            // Log as event for the dashboard activity feed
-            await supabase.from("events").insert({
-              org_id,
-              contact_id,
-              event_type: "workflow_alert",
-              source_system: "system",
-              description: action.message
-                .replace("{{first_name}}", contact.first_name || "")
-                .replace("{{last_name}}", contact.last_name || ""),
-              metadata: { workflow_id: workflow.id, workflow_name: workflow.name },
-            });
-            break;
-          }
-        }
+        await fetch(`${supabaseUrl}/functions/v1/execute-action`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({
+            action,
+            org_id: org_id,
+            contact_id: contact_id,
+          }),
+        });
       } catch (err) {
         console.error(`Action failed for workflow ${workflow.id}:`, err);
       }

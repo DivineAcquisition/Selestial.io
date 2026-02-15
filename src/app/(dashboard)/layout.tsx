@@ -19,7 +19,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const orgName = (membership?.organizations as any)?.name || 'Selestial'
 
   return (
-    <div className="flex h-screen bg-gray-950">
+    <div className="flex h-screen bg-gray-50">
       <Sidebar orgName={orgName} userEmail={user.email || ''} />
       <main className="flex-1 overflow-y-auto p-8">
         {children}

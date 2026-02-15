@@ -1,0 +1,23 @@
+-- 7.3 Daily Cron Job — runs scoring engine every day at 6am UTC to catch inactivity decay.
+-- Requires pg_cron and pg_net extensions to be enabled in Supabase dashboard.
+
+-- Enable extensions (if not already enabled via Supabase dashboard)
+-- CREATE EXTENSION IF NOT EXISTS pg_cron;
+-- CREATE EXTENSION IF NOT EXISTS pg_net;
+
+-- Schedule daily scoring
+-- NOTE: Run this in the Supabase SQL Editor after enabling pg_cron and pg_net extensions.
+-- SELECT cron.schedule(
+--   'daily-scoring',
+--   '0 6 * * *',
+--   $$
+--   SELECT net.http_post(
+--     url := current_setting('supabase.url') || '/functions/v1/scoring-engine',
+--     headers := jsonb_build_object(
+--       'Content-Type', 'application/json',
+--       'Authorization', 'Bearer ' || current_setting('supabase.service_role_key')
+--     ),
+--     body := '{}'::jsonb
+--   );
+--   $$
+-- );

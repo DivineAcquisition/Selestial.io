@@ -1,12 +1,15 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+// Fallback values prevent @supabase/ssr from throwing during Next.js
+// static generation when env vars are not yet available (e.g. Vercel build).
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key'
+
 export async function createServerSupabase() {
   const cookieStore = await cookies()
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  return createServerClient(supabaseUrl, supabaseAnonKey,
     {
       cookies: {
         getAll() {
